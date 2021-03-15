@@ -7,6 +7,7 @@ import androidx.core.content.FileProvider;
 
 import android.Manifest;
 import android.app.DownloadManager;
+import android.app.ProgressDialog;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -32,50 +33,92 @@ import java.net.URLConnection;
 
 
 public class MainActivity extends AppCompatActivity {
-    private Button btn_download;
+    private Button btn_download, btn_scanner, btn_gen;
     private long downloadID;
     String DownloadStatus = "";
     String destination = "";
     String fileName = "";
-    String urlDownload = "http://192.168.1.77:5100/api/Dowload";
+    String urlDownload = "http://192.168.1.90:5100/api/Dowload";
+    DownloadManager downloadManager;
+
     // using broadcast method
     private BroadcastReceiver onDownloadComplete = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-
+            Toast.makeText(context, "inBroadcastReceiver", Toast.LENGTH_SHORT).show();
             //Fetching the download id received with the broadcast
             File fileInstall = new File(destination);
             long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
             //Checking if the received broadcast is for our enqueued download by matching download id
             if (downloadID == id) {
-                Toast.makeText(context, DownloadStatus, Toast.LENGTH_SHORT).show();
-                if (DownloadStatus.contains("Completed") && !destination.equals("")) {
-                    // Uri contentUri = FileProvider.getUriForFile(context, BuildConfig.APPLICATION_ID + ".provider", new File(destination));
-                    if (fileInstall.exists()) {
-                        Intent install = new Intent(Intent.ACTION_VIEW);
-                        install.setDataAndType(uriFromFile(getApplicationContext(), new File(destination)), "application/vnd.android.package-archive");
-                        //  install.setDataAndType(contentUri, "application/vnd.android.package-archive");
-                      //  install.putExtra(Intent.EXTRA_STREAM, contentUri);
-                        install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                        install.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        try {
-                            getApplicationContext().startActivity(install);
-                        } catch (Throwable  e) {
-                            Toast.makeText(context, e.toString(), Toast.LENGTH_SHORT).show();
-                            e.printStackTrace();
 
-                            Log.e("TAG", "Error in opening the file!");
+
+
+                Cursor cursor = downloadManager.query(new DownloadManager.Query().setFilterById(downloadID));
+                if (cursor.moveToFirst()) {
+                    int status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS));
+                    if (status == DownloadManager.STATUS_SUCCESSFUL && !destination.equals("")) {
+
+                        // download is successful
+                        if (fileInstall.exists()) {
+                            Intent install = new Intent(Intent.ACTION_VIEW);
+                            install.setDataAndType(uriFromFile(getApplicationContext(), new File(destination)), "application/vnd.android.package-archive");
+                            //  install.setDataAndType(contentUri, "application/vnd.android.package-archive");
+                            //  install.putExtra(Intent.EXTRA_STREAM, contentUri);
+                            install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                            install.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            try {
+                                getApplicationContext().startActivity(install);
+                            } catch (Throwable e) {
+
+                                Toast.makeText(context, e.toString(), Toast.LENGTH_SHORT).show();
+                                e.printStackTrace();
+
+                                Log.e("TAG", "Error in opening the file!");
+
+                            }finally {
+                                EnableBody(true);
+                            }
                         }
-                    }
+                    } else if (status == DownloadManager.STATUS_FAILED) {
 
+                        Toast.makeText(context, "STATUS Download fail", Toast.LENGTH_SHORT).show();
+
+                    } else {
+                        Toast.makeText(context, status, Toast.LENGTH_SHORT).show();
+                    }
                 }
+
+                EnableBody(true);
+                downloadManager.remove(downloadID);
+//                if (DownloadStatus.contains("Completed") && !destination.equals("")) {
+//                            Toast.makeText(context, "inBroadcastReceiver_install", Toast.LENGTH_SHORT).show();
+//                            // Uri contentUri = FileProvider.getUriForFile(context, BuildConfig.APPLICATION_ID + ".provider", new File(destination));
+//                            if (fileInstall.exists()) {
+//                                Intent install = new Intent(Intent.ACTION_VIEW);
+//                                install.setDataAndType(uriFromFile(getApplicationContext(), new File(destination)), "application/vnd.android.package-archive");
+//                                //  install.setDataAndType(contentUri, "application/vnd.android.package-archive");
+//                                //  install.putExtra(Intent.EXTRA_STREAM, contentUri);
+//                                install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+//                                install.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+//                        try {
+//                            getApplicationContext().startActivity(install);
+//                        } catch (Throwable  e) {
+//                            Toast.makeText(context, e.toString(), Toast.LENGTH_SHORT).show();
+//                            e.printStackTrace();
+//
+//                            Log.e("TAG", "Error in opening the file!");
+//                        }
+//                    }
+//
+//                }
             }
         }
     };
 
     Uri uriFromFile(Context context, File file) {
-      //  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            return FileProvider.getUriForFile(context, BuildConfig.APPLICATION_ID + ".provider", file);
+        //  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        return FileProvider.getUriForFile(context, BuildConfig.APPLICATION_ID + ".provider", file);
 //        } else {
 //            return Uri.fromFile(file);
 //        }
@@ -103,27 +146,102 @@ public class MainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
         }
         btn_download = findViewById(R.id.buttonDow);
+        btn_scanner = findViewById(R.id.buttonDow_scanner);
+        btn_gen = findViewById(R.id.buttonDow_gen);
         // using broadcast method
-        destination = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) + File.separator;
-        fileName = "hhtdemo.apk";
-        destination += fileName;
+
+
+//        fileName = "hhtdemo.apk";
+//        destination += fileName;
         registerReceiver(onDownloadComplete, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
         btn_download.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-              //  if (isConnectedToServer(urlDownload, 100)) {
-                    beginDownload();
+                urlDownload = "http://192.168.1.90:5100/api/Dowload";
+                fileName = "hhtdemo.apk";
+                destination = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) + File.separator;
+                destination += fileName;
+                //  if (isConnectedToServer(urlDownload, 100)) {
+//                ProgressDialog progress = new ProgressDialog(MainActivity.this);
+//                progress.setTitle("Loading");
+//                progress.setMessage("Wait while loading...");
+//                progress.setCancelable(false); // disable dismiss by tapping outside of the dialog
+//                progress.show();
+// To dismiss the dialog
+
+
+                beginDownload();
+
+                //  progress.dismiss();
 //                }
 //                else
 //                {
 //                    Toast.makeText(MainActivity.this    ,"Connot connect to Service " + urlDownload, Toast.LENGTH_LONG).show();
 //                }
-                Toast.makeText(MainActivity.this    ,"Finish loop dowload", Toast.LENGTH_LONG).show();
+                Toast.makeText(MainActivity.this, "Finish loop dowload", Toast.LENGTH_LONG).show();
+            }
+        });
+        btn_scanner.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                urlDownload = "http://192.168.1.90:5100/api/Dowload/Scanner";
+
+                fileName = "qrcodescanner.apk";
+                destination = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) + File.separator;
+                destination += fileName;
+                //  if (isConnectedToServer(urlDownload, 100)) {
+//                ProgressDialog progress = new ProgressDialog(MainActivity.this);
+//                progress.setTitle("Loading");
+//                progress.setMessage("Wait while loading...");
+//                progress.setCancelable(false); // disable dismiss by tapping outside of the dialog
+//                progress.show();
+// To dismiss the dialog
+
+
+                beginDownload();
+
+                //  progress.dismiss();
+//                }
+//                else
+//                {
+//                    Toast.makeText(MainActivity.this    ,"Connot connect to Service " + urlDownload, Toast.LENGTH_LONG).show();
+//                }
+                Toast.makeText(MainActivity.this, "Finish loop dowload", Toast.LENGTH_LONG).show();
+            }
+        });
+
+        btn_gen.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                urlDownload = "http://192.168.1.90:5100/api/Dowload/Generate";
+
+                fileName = "genqrcode.apk";
+                destination = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) + File.separator;
+                destination += fileName;
+                //  if (isConnectedToServer(urlDownload, 100)) {
+//                ProgressDialog progress = new ProgressDialog(MainActivity.this);
+//                progress.setTitle("Loading");
+//                progress.setMessage("Wait while loading...");
+//                progress.setCancelable(false); // disable dismiss by tapping outside of the dialog
+//                progress.show();
+// To dismiss the dialog
+
+
+                beginDownload();
+
+                //  progress.dismiss();
+//                }
+//                else
+//                {
+//                    Toast.makeText(MainActivity.this    ,"Connot connect to Service " + urlDownload, Toast.LENGTH_LONG).show();
+//                }
+                Toast.makeText(MainActivity.this, "Finish loop dowload", Toast.LENGTH_LONG).show();
             }
         });
     }
+
     public boolean isConnectedToServer(String url, int timeout) {
-        try{
+        try {
 //            URL myUrl = new URL(url);
 //            URLConnection connection = myUrl.openConnection();
 //
@@ -135,6 +253,7 @@ public class MainActivity extends AppCompatActivity {
             return false;
         }
     }
+
     @Override
     public void onDestroy() {
         super.onDestroy();
@@ -143,6 +262,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void beginDownload() {
+        EnableBody(false);
         DownloadStatus = "";
         try {
 
@@ -162,60 +282,69 @@ public class MainActivity extends AppCompatActivity {
                     .setRequiresCharging(false)// Set if charging is required to begin the download
                     .setAllowedOverMetered(true)// Set if download is allowed on Mobile network
                     .setAllowedOverRoaming(true);// Set if download is allowed on roaming network
-            DownloadManager downloadManager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+            downloadManager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
             downloadID = downloadManager.enqueue(request);// enqueue puts the download request in the queue.
 
             // using query method
-            boolean finishDownload = false;
-            int progress;
-            long t= System.currentTimeMillis();
-            long end = t+10000;
-            while (!finishDownload) {
-                if (System.currentTimeMillis() > end){
-                    downloadManager.remove(downloadID);
-                    Toast.makeText(MainActivity.this, "Download Service time out ,from " + urlDownload, Toast.LENGTH_SHORT).show();
-                    finishDownload = true;
-                    return;
-                }
-                Cursor cursor = downloadManager.query(new DownloadManager.Query().setFilterById(downloadID));
-                if (cursor.moveToFirst()) {
-                    int status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS));
-                    switch (status) {
-                        case DownloadManager.STATUS_FAILED: {
-                            DownloadStatus = "Download Failed";
-                            finishDownload = true;
-                            break;
-                        }
-                        case DownloadManager.STATUS_PAUSED:
-                            break;
-                        case DownloadManager.STATUS_PENDING:
-                            break;
-                        case DownloadManager.STATUS_RUNNING: {
-                            final long total = cursor.getLong(cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
-                            if (total >= 0) {
-                                final long downloaded = cursor.getLong(cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR));
-                                progress = (int) ((downloaded * 100L) / total);
-                                // if you use downloadmanger in async task, here you can use like this to display progress.
-                                // Don't forget to do the division in long to get more digits rather than double.
-                                //  publishProgress((int) ((downloaded * 100L) / total));
-                            }
-                            break;
-                        }
-                        case DownloadManager.STATUS_SUCCESSFUL: {
-                            progress = 100;
-                            // if  use aysnc task
-                            // publishProgress(100);
-                            finishDownload = true;
-                            DownloadStatus = "Download Completed";
-                            //Toast.makeText(MainActivity.this, "Download Completed", Toast.LENGTH_SHORT).show();
-                            break;
-                        }
-                    }
-                }
-            }
+//            boolean finishDownload = false;
+//            int progress;
+//            long t= System.currentTimeMillis();
+//            long end = t+10000;
+//            while (!finishDownload) {
+//                if (System.currentTimeMillis() > end){
+//                    downloadManager.remove(downloadID);
+//                    Toast.makeText(MainActivity.this, "Download Service time out ,from " + urlDownload, Toast.LENGTH_SHORT).show();
+//                    finishDownload = true;
+//                    return;
+//                }
+//                Cursor cursor = downloadManager.query(new DownloadManager.Query().setFilterById(downloadID));
+//                if (cursor.moveToFirst()) {
+//                    int status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS));
+//                    switch (status) {
+//                        case DownloadManager.STATUS_FAILED: {
+//                            DownloadStatus = "Download Failed";
+//                            finishDownload = true;
+//                            break;
+//                        }
+//                        case DownloadManager.STATUS_PAUSED:
+//                            break;
+//                        case DownloadManager.STATUS_PENDING:
+//                            break;
+//                        case DownloadManager.STATUS_RUNNING: {
+//                            final long total = cursor.getLong(cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
+//                            if (total >= 0) {
+//                                final long downloaded = cursor.getLong(cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR));
+//                                progress = (int) ((downloaded * 100L) / total);
+//                                // if you use downloadmanger in async task, here you can use like this to display progress.
+//                                // Don't forget to do the division in long to get more digits rather than double.
+//                                //  publishProgress((int) ((downloaded * 100L) / total));
+//                            }
+//                            break;
+//                        }
+//                        case DownloadManager.STATUS_SUCCESSFUL: {
+//                            progress = 100;
+//                            // if  use aysnc task
+//                            // publishProgress(100);
+//                            finishDownload = true;
+//                            DownloadStatus = "Download Completed";
+//                            //Toast.makeText(MainActivity.this, "Download Completed", Toast.LENGTH_SHORT).show();
+//                            break;
+//                        }
+//                    }
+//                }
+//            }
 
         } catch (Throwable e) {
+            downloadManager.remove(downloadID);
+            EnableBody(true);
             e.printStackTrace();
         }
+    }
+
+    public void EnableBody(boolean bool) {
+
+        btn_download.setEnabled(bool);
+        btn_scanner.setEnabled(bool);
+        btn_gen.setEnabled(bool);
     }
 }
