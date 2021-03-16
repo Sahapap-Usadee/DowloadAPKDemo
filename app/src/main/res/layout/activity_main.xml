@@ -28,4 +28,9 @@ android:orientation="vertical"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Dowload Gen"/>
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/buttonDow_pdfPrint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Dowload PDFPrint"/>
 </LinearLayout>

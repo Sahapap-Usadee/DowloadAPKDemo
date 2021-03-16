@@ -31,14 +31,21 @@ import java.net.InetAddress;
 import java.net.URL;
 import java.net.URLConnection;
 
+import static com.jastec.dowloadapkdemo.Common.URLDownloadHHT;
+
 
 public class MainActivity extends AppCompatActivity {
-    private Button btn_download, btn_scanner, btn_gen;
+    private Button btn_download, btn_scanner, btn_gen,btn_pdfPrint;
     private long downloadID;
-    String DownloadStatus = "";
-    String destination = "";
-    String fileName = "";
-    String urlDownload = "http://192.168.1.90:5100/api/Dowload";
+
+   String destination = "";
+
+
+    public static final String FileNameHHT = "hhtdemo.apk";
+    public static final String FileNameQrCode = "qrcodescanner.apk";
+    public static final String FileNameGen = "genqrcode.apk";
+    public static final String FileNamePdfPrint = "PDFPrintdemo.apk";
+
     DownloadManager downloadManager;
 
     // using broadcast method
@@ -52,8 +59,6 @@ public class MainActivity extends AppCompatActivity {
             //Checking if the received broadcast is for our enqueued download by matching download id
             if (downloadID == id) {
 
-
-
                 Cursor cursor = downloadManager.query(new DownloadManager.Query().setFilterById(downloadID));
                 if (cursor.moveToFirst()) {
                     int status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS));
@@ -62,7 +67,7 @@ public class MainActivity extends AppCompatActivity {
                         // download is successful
                         if (fileInstall.exists()) {
                             Intent install = new Intent(Intent.ACTION_VIEW);
-                            install.setDataAndType(uriFromFile(getApplicationContext(), new File(destination)), "application/vnd.android.package-archive");
+                            install.setDataAndType(uriFromFile(getApplicationContext(), fileInstall), Common.apkMimeType);
                             //  install.setDataAndType(contentUri, "application/vnd.android.package-archive");
                             //  install.putExtra(Intent.EXTRA_STREAM, contentUri);
                             install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -90,7 +95,9 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 EnableBody(true);
-                downloadManager.remove(downloadID);
+          //      downloadManager.remove(downloadID);
+
+
 //                if (DownloadStatus.contains("Completed") && !destination.equals("")) {
 //                            Toast.makeText(context, "inBroadcastReceiver_install", Toast.LENGTH_SHORT).show();
 //                            // Uri contentUri = FileProvider.getUriForFile(context, BuildConfig.APPLICATION_ID + ".provider", new File(destination));
@@ -148,6 +155,7 @@ public class MainActivity extends AppCompatActivity {
         btn_download = findViewById(R.id.buttonDow);
         btn_scanner = findViewById(R.id.buttonDow_scanner);
         btn_gen = findViewById(R.id.buttonDow_gen);
+        btn_pdfPrint = findViewById(R.id.buttonDow_pdfPrint);
         // using broadcast method
 
 
@@ -157,10 +165,10 @@ public class MainActivity extends AppCompatActivity {
         btn_download.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                urlDownload = "http://192.168.1.90:5100/api/Dowload";
-                fileName = "hhtdemo.apk";
-                destination = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) + File.separator;
-                destination += fileName;
+
+              //  fileName = "hhtdemo.apk";
+             //   destination = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) + File.separator;
+             //   destination += fileName;
                 //  if (isConnectedToServer(urlDownload, 100)) {
 //                ProgressDialog progress = new ProgressDialog(MainActivity.this);
 //                progress.setTitle("Loading");
@@ -170,7 +178,7 @@ public class MainActivity extends AppCompatActivity {
 // To dismiss the dialog
 
 
-                beginDownload();
+                beginDownload(GetAppPathDownload(FileNameHHT),Common.URLDownloadHHT,FileNameHHT);
 
                 //  progress.dismiss();
 //                }
@@ -184,28 +192,9 @@ public class MainActivity extends AppCompatActivity {
         btn_scanner.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                urlDownload = "http://192.168.1.90:5100/api/Dowload/Scanner";
 
-                fileName = "qrcodescanner.apk";
-                destination = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) + File.separator;
-                destination += fileName;
-                //  if (isConnectedToServer(urlDownload, 100)) {
-//                ProgressDialog progress = new ProgressDialog(MainActivity.this);
-//                progress.setTitle("Loading");
-//                progress.setMessage("Wait while loading...");
-//                progress.setCancelable(false); // disable dismiss by tapping outside of the dialog
-//                progress.show();
-// To dismiss the dialog
+                beginDownload(GetAppPathDownload(FileNameQrCode),Common.URLDownloadScanner,FileNameQrCode);
 
-
-                beginDownload();
-
-                //  progress.dismiss();
-//                }
-//                else
-//                {
-//                    Toast.makeText(MainActivity.this    ,"Connot connect to Service " + urlDownload, Toast.LENGTH_LONG).show();
-//                }
                 Toast.makeText(MainActivity.this, "Finish loop dowload", Toast.LENGTH_LONG).show();
             }
         });
@@ -213,11 +202,7 @@ public class MainActivity extends AppCompatActivity {
         btn_gen.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                urlDownload = "http://192.168.1.90:5100/api/Dowload/Generate";
 
-                fileName = "genqrcode.apk";
-                destination = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) + File.separator;
-                destination += fileName;
                 //  if (isConnectedToServer(urlDownload, 100)) {
 //                ProgressDialog progress = new ProgressDialog(MainActivity.this);
 //                progress.setTitle("Loading");
@@ -227,7 +212,7 @@ public class MainActivity extends AppCompatActivity {
 // To dismiss the dialog
 
 
-                beginDownload();
+                beginDownload(GetAppPathDownload(FileNameGen),Common.URLDownloadGenerate,FileNameGen);
 
                 //  progress.dismiss();
 //                }
@@ -238,7 +223,17 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(MainActivity.this, "Finish loop dowload", Toast.LENGTH_LONG).show();
             }
         });
+        btn_pdfPrint.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                beginDownload(GetAppPathDownload(FileNamePdfPrint),Common.URLDownloadPDFPrint,FileNamePdfPrint);
+
+                Toast.makeText(MainActivity.this, "Finish loop dowload", Toast.LENGTH_LONG).show();
+            }
+        });
     }
+
 
     public boolean isConnectedToServer(String url, int timeout) {
         try {
@@ -261,20 +256,23 @@ public class MainActivity extends AppCompatActivity {
         unregisterReceiver(onDownloadComplete);
     }
 
-    private void beginDownload() {
+    private void beginDownload(String urlFile,String urlDownload,String fileName) {
         EnableBody(false);
-        DownloadStatus = "";
+
         try {
 
-            File file = new File(destination);
-            if (file.exists()) {
-                file.delete();
+            File file = new File(urlFile);
+            Common.ChkFileExist(file);
 
-            }
+//            File file = new File(destination);
+//            if (file.exists()) {
+//                file.delete();
+//
+//            }
 
             DownloadManager.Request request = new DownloadManager.Request(Uri.parse(urlDownload))
                     .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                    .setMimeType("application/vnd.android.package-archive")
+                    .setMimeType(Common.apkMimeType)
                     .setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI | DownloadManager.Request.NETWORK_MOBILE)
                     .setDestinationUri(Uri.fromFile(file))// Uri of the destination file
                     .setTitle(fileName)// Title of the Download Notification
@@ -341,10 +339,19 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+
+
     public void EnableBody(boolean bool) {
 
         btn_download.setEnabled(bool);
         btn_scanner.setEnabled(bool);
         btn_gen.setEnabled(bool);
+        btn_pdfPrint.setEnabled(bool);
+    }
+
+
+    private String GetAppPathDownload(String appName){
+        destination = Common.getAppPathDownload(MainActivity.this ) + appName;
+        return destination;
     }
 }
